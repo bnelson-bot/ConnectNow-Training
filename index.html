@@ -257,19 +257,8 @@
 </head>
 <body>
 
-<!-- API Key Gate -->
-<div id="key-gate">
-  <div class="logo"><span>CN</span></div>
-  <h1>ConnectNow Training</h1>
-  <p>Enter your Google AI Studio API key to begin. Your key is used only in this session and never stored.</p>
-  <input type="password" id="api-key-input" placeholder="Paste your API key here..." autocomplete="off" />
-  <p id="key-error">That doesn't look right — please check your key and try again.</p>
-  <button onclick="startApp()">Start training</button>
-  <p style="font-size:12px;color:var(--gray-400);margin-top:1rem;">Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color:var(--purple-600);">aistudio.google.com</a></p>
-</div>
-
 <!-- Main App -->
-<div id="app">
+<div id="app" style="display:block;">
   <div class="app-header">
     <div class="app-logo">
       <div class="dot"></div>
@@ -442,7 +431,7 @@
     <div id="scen-fb"></div>
     <div class="btn-row" id="scen-btns">
       <button class="btn-ghost" onclick="go(9)">Back</button>
-      <button class="btn-primary" id="scen-submit" onclick="submitScenario()">Get AI feedback</button>
+      <button class="btn-primary" id="scen-submit" onclick="submitScenario()">See model answer</button>
     </div>
   </div>
 
@@ -467,22 +456,8 @@
 </div>
 
 <script>
-let GEMINI_KEY = '';
 const TOTAL = 12;
 const scores = {};
-
-function startApp() {
-  const k = document.getElementById('api-key-input').value.trim();
-  if (!k || k.length < 20) {
-    document.getElementById('key-error').style.display = 'block';
-    return;
-  }
-  GEMINI_KEY = k;
-  document.getElementById('key-gate').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-}
-
-document.getElementById('api-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') startApp(); });
 
 const needs1 = [
   { t: 'Anxiety and stress', c: '<ol><li>Provide empathic validation of the stressors faced by students</li><li>Normalize the age/stage appropriateness of learning to manage stress</li><li>Offer coping skills and grounding techniques to help manage stress</li><li>Help students process and recognize when anxiety/stress may have moved from age/stage appropriate levels to something that would benefit from assessment and care</li></ol>' },
@@ -563,7 +538,7 @@ function updateChar() {
   el.style.color = len >= 50 ? 'var(--green-600)' : 'var(--gray-400)';
 }
 
-async function submitScenario() {
+function submitScenario() {
   const resp = document.getElementById('scen-txt').value.trim();
   if (resp.length < 50) {
     document.getElementById('scen-fb').innerHTML = '<div class="feedback-box no">Please write at least 50 characters before submitting.</div>';
@@ -571,45 +546,30 @@ async function submitScenario() {
   }
   const btn = document.getElementById('scen-submit');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Getting feedback...';
-  document.getElementById('scen-fb').innerHTML = '';
+  btn.textContent = 'Submitted';
 
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `You are a clinical trainer for ConnectNow, a 24/7 virtual crisis line by Mantra Health serving college students.
+  const modelAnswer = `<div class="ai-fb-wrap">
+    <div class="ai-fb-label">Model answer</div>
+    <div class="ai-fb-text">
+      <strong>A strong response would include:</strong>
+      <ol style="padding-left:1.25rem;margin-top:0.5rem;">
+        <li style="margin-bottom:6px;">Open with <strong>empathic validation</strong> — acknowledge the distress the student is feeling about the procrastination cycle before jumping to problem-solving</li>
+        <li style="margin-bottom:6px;">Normalize the experience — this is a very common pattern for college students, especially around high-stakes assignments</li>
+        <li style="margin-bottom:6px;">Assess for any underlying concerns — is this anxiety, depression, ADHD, life stressors? The procrastination may be a symptom of something bigger</li>
+        <li style="margin-bottom:6px;">Offer <strong>coping skills</strong> — grounding techniques, breaking tasks into small steps, body doubling, or other strategies to interrupt the anxiety-avoidance cycle</li>
+        <li style="margin-bottom:6px;">Help the student identify <strong>next steps</strong> — whether that's a campus resource, a conversation with a professor, or scheduling a therapy appointment through The Hub</li>
+        <li>Remember: the goal is <strong>support, stabilization, and resource connection</strong> — not to solve the academic problem itself</li>
+      </ol>
+    </div>
+  </div>`;
 
-ConnectNow's approach: no set session length, focused on here-and-now support, stabilization and risk management. Core interventions: empathic validation, psychoeducation, coping skill development, resource access, harm reduction, crisis management, problem-solving. Guiding principles: match stage of change readiness, harm reduction and self-determination, compassion is the #1 metric, act as Mantra ambassadors.
-
-A new hire wrote the following response to this scenario: "A student calls in distressed about procrastinating on assignments. That distress is now snowballing and preventing them from working at all."
-
-Trainee response: "${resp}"
-
-Give 2-3 sentences of specific, constructive, warm feedback. What did they get right? What one thing from ConnectNow's approach should they add or strengthen? Write in prose, no bullet points, no headers.`
-          }]
-        }]
-      })
-    });
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('No response');
-    document.getElementById('scen-fb').innerHTML = `<div class="ai-fb-wrap"><div class="ai-fb-label">AI trainer feedback</div><div class="ai-fb-text">${text}</div></div>`;
-    btn.textContent = 'Submitted';
-    const next = document.createElement('button');
-    next.className = 'btn-primary';
-    next.textContent = 'Finish module';
-    next.style.marginTop = '0.75rem';
-    next.onclick = () => go(11);
-    document.getElementById('scen-fb').appendChild(next);
-  } catch(e) {
-    btn.disabled = false;
-    btn.textContent = 'Get AI feedback';
-    document.getElementById('scen-fb').innerHTML = '<div class="feedback-box no">Could not connect — check your API key and try again.</div>';
-  }
+  document.getElementById('scen-fb').innerHTML = modelAnswer;
+  const next = document.createElement('button');
+  next.className = 'btn-primary';
+  next.textContent = 'Finish module';
+  next.style.marginTop = '0.75rem';
+  next.onclick = () => go(11);
+  document.getElementById('scen-fb').appendChild(next);
 }
 </script>
 </body>
